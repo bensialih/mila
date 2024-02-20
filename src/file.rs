@@ -4,12 +4,12 @@ use std::borrow::BorrowMut;
 use std::env;
 use std::fs::rename;
 use std::io::Read;
-use std::{fs::File, io, io::Error};
-use std::rc::Rc;
-use std::process::Command;
 use std::path::Path;
+use std::process::Command;
+use std::rc::Rc;
+use std::{fs::File, io, io::Error};
 
-use crate::helpers::{FileObj, file_exists};
+use crate::helpers::{file_exists, FileObj};
 
 // use crate::::TestFile;
 
@@ -24,19 +24,16 @@ fn rotate(file_location: String, top_number: u32) -> Vec<String> {
 
     for i in (1..=top_number).rev() {
         let from_file = format!("{}.{}", file_location, i);
-        let file_name = format!("{}.{}", file_location, (i+1));
-
-        // if i == 1 {
-        //     println!("transfer orriginal file {file_location} to {from_file}");
-        // } else {
-            // println!("transfer {from_file} to {file_name}");
-        // }
+        let file_name = format!("{}.{}", file_location, (i + 1));
         files.push(file_name);
     }
-
-    // move original to .1
-
     files
+}
+
+pub fn rotate_file(mut file_location: String) {
+    // file_location is the base file location
+    // 1) get highest number of file number
+    // 2) rotate all files into next one up
 }
 
 fn get_highest_file(mut file_location: FileObj) -> u32 {
@@ -49,56 +46,11 @@ fn get_highest_file(mut file_location: FileObj) -> u32 {
     return counter;
 }
 
-pub fn rotate_file(mut file_location: String) {
-    // file_location is the base file location
-    // 1) get highest number of file number
-    // 2) rotate all files into next one up
-
-    
-    // let mut file_exist_bool = file_exist(file_location.to_string());
-
-    let mut counter = 1;
-    // 'check: loop {
-    //     // loop and get the highest non existing file
-    //     file_location = format!("{}.{}", "original", counter);
-    //     file_exist_bool = file_exist(file_location.to_string());
-    //     if file_exist_bool {
-    //         break 'check;
-    //     }
-    //     counter += 1;
-    // }
-
-    // print!("max file not found is : {counter}");
-
-
-    // 'check: loop {
-    //     let file_exist = file_exist(file_location.to_string());
-    //     if file_exist {
-    //         file_location = format!("{}.{}", original, counter.unwrap_or(1));
-
-    //         counter = if counter.is_none() {
-    //              Some(1)
-    //         } else {
-    //             let value = counter.unwrap();
-    //             Some(value+1)
-    //         }
-    //     } else {
-    //         println!("current file is {}", file_location);
-    //         println!("current counter {}", counter.unwrap_or(0));
-    //         rotate(file_location, counter.unwrap_or(0));
-    //         break 'check;
-    //     }
-    // }
-
-    // while  {
-    //     let location = file_location.borrow_mut();
-    //     // file_location = format!("{}.{}", original, counter);
-    //     counter += 1;
-    // }
-}
-
 fn move_file(from_file: Box<String>, to_file: Box<String>) -> bool {
-    let result = rename(Path::new(&from_file.to_string()), Path::new(&to_file.to_string()));
+    let result = rename(
+        Path::new(&from_file.to_string()),
+        Path::new(&to_file.to_string()),
+    );
     return result.is_ok();
 }
 
@@ -165,14 +117,12 @@ pub fn settings(file_location: Option<&str>) -> FileSize {
     file_size.unwrap_or_default()
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-    use std::path::PathBuf;
     use super::*;
-    use crate::helpers::{TestFile, FileObj};
-    
+    use crate::helpers::{FileObj, TestFile};
+    use std::path::PathBuf;
+    use std::str::FromStr;
 
     #[test]
     fn test_deserializer_lowercase() {
@@ -195,10 +145,10 @@ mod tests {
     fn test_get_highest_file() {
         let mut files: Vec<Box<String>> = Vec::new();
         let parent = PathBuf::from_str("./data").unwrap();
-        let file_obj = FileObj{
+        let file_obj = FileObj {
             parent: Box::new(parent),
             file_name: Box::new("t_file".to_string()),
-            extension: Box::new("json".to_string())
+            extension: Box::new("json".to_string()),
         };
 
         files.push(Box::new(*file_obj.to_string()));
@@ -206,9 +156,9 @@ mod tests {
         files.push(Box::new(*file_obj.incremented(2)));
         files.push(Box::new(*file_obj.incremented(3)));
 
-        let builder = TestFile{files};
+        let builder = TestFile { files };
         builder.create();
-        
+
         let counter = get_highest_file(file_obj);
         assert_eq!(counter, 4);
         builder.delete();
@@ -217,27 +167,34 @@ mod tests {
     #[test]
     fn test_file_object_filepath() {
         let parent = PathBuf::from_str("./data").unwrap();
-        let file_obj = FileObj{
+        let file_obj = FileObj {
             parent: Box::new(parent),
             file_name: Box::new("test_file".to_string()),
-            extension: Box::new("json".to_string())
+            extension: Box::new("json".to_string()),
         };
 
-        assert_eq!(file_obj.incremented(4), Box::new("./data/test_file.4.json".to_string()));
-        assert_eq!(file_obj.to_string(), Box::new("./data/test_file.json".to_string()));
+        assert_eq!(
+            file_obj.incremented(4),
+            Box::new("./data/test_file.4.json".to_string())
+        );
+        assert_eq!(
+            file_obj.to_string(),
+            Box::new("./data/test_file.json".to_string())
+        );
     }
 
     #[test]
     fn test_transfer_file() {
         let parent = PathBuf::from_str("./data").unwrap();
         let mut files_to_delete: Vec<Box<String>> = Vec::new();
-        let mut file_builder = TestFile{files: files_to_delete};
+        let mut file_builder = TestFile {
+            files: files_to_delete,
+        };
 
-
-        let file_obj = FileObj{
+        let file_obj = FileObj {
             parent: Box::new(parent),
             file_name: Box::new("t_file".to_string()),
-            extension: Box::new("json".to_string())
+            extension: Box::new("json".to_string()),
         };
 
         // add base host test file
@@ -245,13 +202,9 @@ mod tests {
         file_builder.files.push(file_from.clone());
         file_builder.create();
 
-
         let file_to_transfer = file_obj.incremented(4);
 
-        move_file(
-            file_from.clone(), 
-            file_to_transfer.to_owned()
-        );
+        move_file(file_from.clone(), file_to_transfer.to_owned());
 
         // check that from_file is deleted and new file "file_to_transfer" exists
         assert_eq!(false, file_exists(&file_from));
@@ -262,5 +215,4 @@ mod tests {
 
         assert_eq!(false, file_exists(&file_to_transfer));
     }
-
 }

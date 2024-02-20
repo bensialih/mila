@@ -1,7 +1,6 @@
-
-use std::process::Command;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 pub struct TestFile {
     pub files: Vec<Box<String>>,
@@ -15,7 +14,8 @@ pub struct FileObj {
 
 impl FileObj {
     pub fn incremented(&self, number: u32) -> Box<String> {
-        Box::new(format!("{}/{}.{number}.{}",
+        Box::new(format!(
+            "{}/{}.{number}.{}",
             self.parent.to_str().unwrap(),
             self.file_name,
             self.extension,
@@ -23,7 +23,8 @@ impl FileObj {
     }
 
     pub fn to_string(&self) -> Box<String> {
-        Box::new(format!("{}/{}.{}", 
+        Box::new(format!(
+            "{}/{}.{}",
             self.parent.to_str().unwrap(),
             self.file_name,
             self.extension,
@@ -72,7 +73,6 @@ impl TestFile {
         }
     }
 }
-
 
 pub fn file_exists(file_location: &str) -> bool {
     return Path::new(file_location).exists();
