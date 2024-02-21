@@ -9,7 +9,7 @@ use std::process::Command;
 use std::rc::Rc;
 use std::{fs::File, io, io::Error};
 
-use crate::helpers::{file_exists, FileObj};
+use crate::helpers::{FileObj};
 
 // use crate::::TestFile;
 
@@ -123,6 +123,7 @@ mod tests {
     use crate::helpers::{FileObj, TestFile};
     use std::path::PathBuf;
     use std::str::FromStr;
+    use crate::helpers::file_exists;
 
     #[test]
     fn test_deserializer_lowercase() {
