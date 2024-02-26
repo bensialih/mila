@@ -1,0 +1,21 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+      - 'feature-**'
+
+jobs:
+  test_phaser:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: run build
+      run: cargo build --verbose
+
+    - name: run tests
+      run: cargo t --verbose
+
+    - name: run formatting
+      run: cargo fmt --all -- --check
