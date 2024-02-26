@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "fib"
+name = "mila"
 version = "0.1.0"
