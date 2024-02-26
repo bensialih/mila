@@ -1,6 +1,12 @@
 #![allow(unused)]
-use std::{borrow::BorrowMut, fs::{create_dir, create_dir_all, remove_dir_all, rename, DirBuilder, File}, iter, path::{Path, PathBuf}, sync::Mutex};
 use std::rc::Rc;
+use std::{
+    borrow::BorrowMut,
+    fs::{create_dir, create_dir_all, remove_dir_all, rename, DirBuilder, File},
+    iter,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
 #[derive(Clone)]
 struct FileObj {
@@ -39,9 +45,6 @@ trait FolderTrait {
 
 trait FileTrait {
     fn touch(&self);
-    fn delete(&self);
-    fn move_file(&self, new_location: Self);
-
     fn get_highest_count(&self) -> Option<u32>;
     fn rotate(&self, from_number: Option<u32>, to_number: Option<u32>);
 }
@@ -54,12 +57,8 @@ impl FileTrait for FileObj {
         File::create(full_path).unwrap();
     }
 
-    fn delete(&self){todo!()}
-    fn move_file(&self, new_location: Self){todo!()}
-
     /// gets either a number or None if there is no other files that have been incremented
     fn get_highest_count(&self) -> Option<u32> {
-        
         let top_count = 1;
 
         for count in 1..100_000 {
@@ -69,8 +68,7 @@ impl FileTrait for FileObj {
             if Path::new(&parent).exists() == false {
                 if count == 1 {
                     return None;
-                }
-                else {
+                } else {
                     return Some(count - 1);
                 }
             }
@@ -78,7 +76,7 @@ impl FileTrait for FileObj {
         None
     }
 
-    fn rotate(&self, from_number: Option<u32>, to_number: Option<u32>){
+    fn rotate(&self, from_number: Option<u32>, to_number: Option<u32>) {
         // let count = self.get_highest_count();
         if from_number.is_none() {
             // means there is no files above the original so move file from file.txt to file.1.txt
@@ -117,7 +115,6 @@ impl FileTrait for FileObj {
                 self.rotate(Some(from_num), Some(to_num));
             }
         }
-
     }
 }
 
@@ -131,7 +128,7 @@ impl FolderTrait for FolderOperator {
         let file = FileObj {
             parent: parent_path.clone(),
             file_stem: String::from(name.to_str().unwrap()),
-            suffix: String::from(suffix.to_str().unwrap())
+            suffix: String::from(suffix.to_str().unwrap()),
         };
         self.files.get_mut().unwrap().push(file.clone());
 
@@ -147,11 +144,10 @@ impl FolderTrait for FolderOperator {
         }
 
         let directory = PathBuf::from(dir);
-        create_dir(&directory)
-            .expect("new folder to be created");
+        create_dir(&directory).expect("new folder to be created");
 
         self.folder = Some(directory);
-        return self
+        return self;
     }
 
     fn new() -> FolderOperator {
@@ -177,9 +173,7 @@ impl FolderTrait for FolderOperator {
     }
 }
 
-fn main() {
-    
-}
+fn main() {}
 
 #[cfg(test)]
 mod tests {
@@ -191,24 +185,12 @@ mod tests {
         let mut builder = FolderOperator::new()
             .with_directory("./touch_folder")
             .add_file("cap.txt", None);
-        
+
         let file = &builder.files.get_mut().unwrap()[0];
         file.touch();
         assert_eq!(file.path().exists(), true);
         builder.delete();
     }
-
-    #[test]
-    fn test_delete_file() {
-
-    }
-
-    #[test]
-    fn test_move_file(){
-
-    }
-
-
 
     #[test]
     fn test_folder_creation() {
@@ -240,7 +222,6 @@ mod tests {
         assert_eq!(File::open("./exo_repo1/file2.txt").is_ok(), true);
         builder.delete();
     }
-
 
     #[test]
     fn test_highest_file_number() {
@@ -274,7 +255,7 @@ mod tests {
         let count = file.get_highest_count();
 
         // rotate files and create an emplty original file
-        file.rotate(count, Some(count.unwrap()+1));
+        file.rotate(count, Some(count.unwrap() + 1));
         assert_eq!(path_moved.exists(), true);
         assert_eq!(path2.exists(), true);
         assert_eq!(path.exists(), true);
