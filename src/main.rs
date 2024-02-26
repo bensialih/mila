@@ -1,5 +1,5 @@
 #![allow(unused)]
-use std::{fs::{create_dir, create_dir_all, remove_dir_all, rename, DirBuilder, File}, iter, path::{Path, PathBuf}, sync::Mutex};
+use std::{borrow::BorrowMut, fs::{create_dir, create_dir_all, remove_dir_all, rename, DirBuilder, File}, iter, path::{Path, PathBuf}, sync::Mutex};
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -16,6 +16,12 @@ impl FileObj {
             file_stem: path.file_stem().unwrap().to_string_lossy().to_string(),
             suffix: path.extension().unwrap().to_string_lossy().to_string(),
         }
+    }
+
+    fn path(&self) -> PathBuf {
+        let mut parent = self.parent.clone();
+        parent.push(format!("{}.{}", self.file_stem, self.suffix));
+        return parent.as_path().to_owned();
     }
 }
 
@@ -181,7 +187,15 @@ mod tests {
 
     #[test]
     fn test_touch_file() {
-
+        // create folder without creating the file inside
+        let mut builder = FolderOperator::new()
+            .with_directory("./touch_folder")
+            .add_file("cap.txt", None);
+        
+        let file = &builder.files.get_mut().unwrap()[0];
+        file.touch();
+        assert_eq!(file.path().exists(), true);
+        builder.delete();
     }
 
     #[test]
@@ -235,7 +249,7 @@ mod tests {
             .with_directory("./exo_folder")
             .add_file("file.txt", Some(true));
 
-        assert_eq!(Path::new(&path).exists(), true);
+        assert_eq!(path.exists(), true);
 
         let route_file = FileObj::new(&path);
         assert_eq!(route_file.get_highest_count(), None);
@@ -261,10 +275,9 @@ mod tests {
 
         // rotate files and create an emplty original file
         file.rotate(count, Some(count.unwrap()+1));
-        assert_eq!(Path::new(&path_moved).exists(), true);
-        assert_eq!(Path::new(&path2).exists(), true);
-        assert_eq!(Path::new(&path).exists(), true);
-
+        assert_eq!(path_moved.exists(), true);
+        assert_eq!(path2.exists(), true);
+        assert_eq!(path.exists(), true);
         builder.delete();
     }
 }
