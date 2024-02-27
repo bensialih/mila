@@ -8,7 +8,7 @@ use std::{
 use crate::settings::FileSize;
 
 #[derive(Clone)]
-struct FileObj {
+pub struct FileObj {
     parent: PathBuf,
     file_stem: String,
     suffix: String,
@@ -32,22 +32,12 @@ impl From<PathBuf> for FileObj {
     }
 }
 
-// impl FileObj {
-//     fn new(path: &PathBuf) -> Self {
-
-//     }
-
-//     // fn path(&self) -> PathBuf {
-
-//     // }
-// }
-
-struct FolderOperator {
+pub struct FolderOperator {
     files: Mutex<Vec<FileObj>>,
     folder: Option<PathBuf>,
 }
 
-trait FolderTrait {
+pub trait FolderTrait {
     fn add_file(self, file_name: &str, auto_create: Option<bool>) -> Self;
     fn with_directory(self, folder_name: &'static str) -> Self;
     fn new() -> Self;
