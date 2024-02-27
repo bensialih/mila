@@ -5,52 +5,39 @@ use std::{
     sync::Mutex,
 };
 
+use crate::settings::FileSize;
+
 #[derive(Clone)]
-struct FileObj {
+pub struct FileObj {
     parent: PathBuf,
     file_stem: String,
     suffix: String,
 }
 
-impl FileObj {
-    fn new(path: &PathBuf) -> Self {
-        FileObj {
-            parent: path.parent().unwrap().to_path_buf(),
-            file_stem: path.file_stem().unwrap().to_string_lossy().to_string(),
-            suffix: path.extension().unwrap().to_string_lossy().to_string(),
-        }
-    }
-
-    fn path(&self) -> PathBuf {
-        let mut parent = self.parent.clone();
-        parent.push(format!("{}.{}", self.file_stem, self.suffix));
+impl From<FileObj> for PathBuf {
+    fn from(value: FileObj) -> Self {
+        let mut parent = value.parent.clone();
+        parent.push(format!("{}.{}", value.file_stem, value.suffix));
         return parent.as_path().to_owned();
     }
 }
 
-struct FolderOperator {
-    files: Mutex<Vec<FileObj>>,
-    folder: Option<PathBuf>,
-}
-
-#[derive(Clone)]
-enum FileSize {
-    Mb(u64),
-    Kb(u64),
-    Bytes(u64),
-}
-
-impl From<FileSize> for u64 {
-    fn from(value: FileSize) -> Self {
-        match value {
-            FileSize::Mb(number) => number * 1_000_000,
-            FileSize::Kb(number) => number * 1_000,
-            FileSize::Bytes(number) => number,
+impl From<PathBuf> for FileObj {
+    fn from(value: PathBuf) -> Self {
+        FileObj {
+            parent: value.parent().unwrap().to_path_buf(),
+            file_stem: value.file_stem().unwrap().to_string_lossy().to_string(),
+            suffix: value.extension().unwrap().to_string_lossy().to_string(),
         }
     }
 }
 
-trait FolderTrait {
+pub struct FolderOperator {
+    files: Mutex<Vec<FileObj>>,
+    folder: Option<PathBuf>,
+}
+
+pub trait FolderTrait {
     fn add_file(self, file_name: &str, auto_create: Option<bool>) -> Self;
     fn with_directory(self, folder_name: &'static str) -> Self;
     fn new() -> Self;
@@ -208,9 +195,9 @@ mod tests {
             .with_directory("./touch_folder")
             .add_file("cap.txt", None);
 
-        let file = &builder.files.get_mut().unwrap()[0];
+        let file = builder.files.get_mut().unwrap()[0].clone();
         file.touch();
-        assert_eq!(file.path().exists(), true);
+        assert_eq!(PathBuf::from(file).exists(), true);
         builder.delete();
     }
 
@@ -252,7 +239,7 @@ mod tests {
 
         assert_eq!(path.exists(), true);
 
-        let route_file = FileObj::new(&path);
+        let route_file: FileObj = path.into();
         assert_eq!(route_file.get_highest_count(), None);
 
         builder = builder.add_file("file.1.txt", Some(true));
@@ -271,7 +258,7 @@ mod tests {
             .add_file("file.txt", Some(true))
             .add_file("file.1.txt", Some(true));
 
-        let file = FileObj::new(&path);
+        let file: FileObj = path.clone().into();
         let count = file.get_highest_count();
 
         // rotate files and create an emplty original file
@@ -290,7 +277,8 @@ mod tests {
 
         let mut data = r#"{"hello": "world"}\n"#.repeat(100);
         let path = PathBuf::from("./test_size/exo.json");
-        let file = FileObj::new(&path);
+        let file: FileObj = path.clone().into();
+
         let _ = File::create(&path).unwrap().write(data.as_bytes());
         let mut size = FileSize::Kb(2);
 
