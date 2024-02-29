@@ -44,7 +44,7 @@ pub trait FolderTrait {
     fn delete(self);
 }
 
-trait FileTrait {
+pub trait FileTrait {
     fn touch(&self);
     fn get_highest_count(&self) -> Option<u32>;
     fn rotate(&self, from_number: Option<u32>, to_number: Option<u32>);
@@ -290,6 +290,26 @@ mod tests {
         size = FileSize::Mb(2);
         assert_eq!(file.is_bigger_than(size), true);
 
+        builder.delete();
+    }
+
+    #[test]
+    fn test_no_file_rotated() {
+        // test outlyer of subject file found but nothing has been rotated yet
+        let root = PathBuf::from("./no_rotation_fol/root.json");
+        let new_file = PathBuf::from("./no_rotation_fol/root.1.json");
+        let builder = FolderOperator::new()
+            .with_directory("./no_rotation_fol")
+            .add_file("./root.json", Some(true));
+
+        assert_eq!(root.exists(), true);
+        let file_obj: FileObj = root.into();
+        let count = file_obj.get_highest_count();
+
+        assert_eq!(count, None);
+        file_obj.rotate(count, Some(count.unwrap_or(0) + 1));
+
+        assert_eq!(new_file.exists(), true);
         builder.delete();
     }
 }
