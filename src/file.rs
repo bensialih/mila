@@ -1,17 +1,8 @@
+use crate::helpers::FileObj;
 use regex::Regex;
 use serde::Deserialize;
-use std::borrow::BorrowMut;
-use std::env;
-use std::fs::rename;
 use std::io::Read;
-use std::path::Path;
-use std::process::Command;
-use std::rc::Rc;
-use std::{fs::File, io, io::Error};
-
-use crate::helpers::{FileObj};
-
-// use crate::::TestFile;
+use std::{env, fs::File};
 
 #[derive(Debug)]
 pub enum FileError {
@@ -19,13 +10,12 @@ pub enum FileError {
     FileSizeInvalid,
 }
 
-fn rotate(file_location: String, top_number: u32) -> Vec<String> {
-    let mut files: Vec<String> = Vec::new();
+fn rotate_files(file_location: FileObj, top_number: u32) -> Vec<FileObj> {
+    let mut files: Vec<FileObj> = Vec::new();
 
     for i in (1..=top_number).rev() {
-        let from_file = format!("{}.{}", file_location, i);
-        let file_name = format!("{}.{}", file_location, (i + 1));
-        files.push(file_name);
+        let file_name = file_location.incremented(i);
+        files.push(FileObj::new(file_name.to_string()));
     }
     files
 }
@@ -34,24 +24,6 @@ pub fn rotate_file(mut file_location: String) {
     // file_location is the base file location
     // 1) get highest number of file number
     // 2) rotate all files into next one up
-}
-
-fn get_highest_file(mut file_location: FileObj) -> u32 {
-    // let original = file_location.to_string();
-    let mut counter = 1;
-
-    while File::open(*file_location.incremented(counter)).is_ok() {
-        counter += 1;
-    }
-    return counter;
-}
-
-fn move_file(from_file: Box<String>, to_file: Box<String>) -> bool {
-    let result = rename(
-        Path::new(&from_file.to_string()),
-        Path::new(&to_file.to_string()),
-    );
-    return result.is_ok();
 }
 
 pub fn check_file_size(file_location: &str) -> Result<u64, FileError> {
@@ -119,11 +91,10 @@ pub fn settings(file_location: Option<&str>) -> FileSize {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::helpers::{FileObj, TestFile};
+    use crate::file::{rotate_files, FileSize};
+    use crate::helpers::FileObj;
     use std::path::PathBuf;
     use std::str::FromStr;
-    use crate::helpers::file_exists;
 
     #[test]
     fn test_deserializer_lowercase() {
@@ -137,83 +108,40 @@ mod tests {
     }
 
     #[test]
-    fn test_file_rotation() {
-        let list = rotate("tmp.txt".to_string(), 5);
+    fn test_file_rotation_relative() {
+        let file_operator = FileObj::new("./tmp.txt".to_string());
+        let list = rotate_files(file_operator.clone(), 5);
         assert_eq!(list.len(), 5);
+        assert_eq!(list[0].to_string(), String::from("./tmp.5.txt"));
     }
 
     #[test]
-    fn test_get_highest_file() {
-        let mut files: Vec<Box<String>> = Vec::new();
-        let parent = PathBuf::from_str("./data").unwrap();
-        let file_obj = FileObj {
-            parent: Box::new(parent),
-            file_name: Box::new("t_file".to_string()),
-            extension: Box::new("json".to_string()),
-        };
-
-        files.push(Box::new(*file_obj.to_string()));
-        files.push(Box::new(*file_obj.incremented(1)));
-        files.push(Box::new(*file_obj.incremented(2)));
-        files.push(Box::new(*file_obj.incremented(3)));
-
-        let builder = TestFile { files };
-        builder.create();
-
-        let counter = get_highest_file(file_obj);
-        assert_eq!(counter, 4);
-        builder.delete();
+    fn test_file_rotation_absolute() {
+        let file_operator = FileObj::new("/tmp/tmp.txt".to_string());
+        let list = rotate_files(file_operator.clone(), 5);
+        assert_eq!(list.len(), 5);
+        assert_eq!(
+            list[0].to_string(),
+            String::from("/tmp/tmp.5.txt")
+        );
     }
 
     #[test]
     fn test_file_object_filepath() {
         let parent = PathBuf::from_str("./data").unwrap();
         let file_obj = FileObj {
-            parent: Box::new(parent),
-            file_name: Box::new("test_file".to_string()),
-            extension: Box::new("json".to_string()),
+            parent: parent,
+            file_name: "test_file".to_string(),
+            extension: "json".to_string(),
         };
 
         assert_eq!(
             file_obj.incremented(4),
-            Box::new("./data/test_file.4.json".to_string())
+            "./data/test_file.4.json".to_string()
         );
         assert_eq!(
             file_obj.to_string(),
-            Box::new("./data/test_file.json".to_string())
+            "./data/test_file.json".to_string()
         );
-    }
-
-    #[test]
-    fn test_transfer_file() {
-        let parent = PathBuf::from_str("./data").unwrap();
-        let mut files_to_delete: Vec<Box<String>> = Vec::new();
-        let mut file_builder = TestFile {
-            files: files_to_delete,
-        };
-
-        let file_obj = FileObj {
-            parent: Box::new(parent),
-            file_name: Box::new("t_file".to_string()),
-            extension: Box::new("json".to_string()),
-        };
-
-        // add base host test file
-        let file_from = file_obj.to_string();
-        file_builder.files.push(file_from.clone());
-        file_builder.create();
-
-        let file_to_transfer = file_obj.incremented(4);
-
-        move_file(file_from.clone(), file_to_transfer.to_owned());
-
-        // check that from_file is deleted and new file "file_to_transfer" exists
-        assert_eq!(false, file_exists(&file_from));
-        assert_eq!(true, file_exists(&file_to_transfer));
-
-        file_builder.files.push(file_to_transfer.clone());
-        file_builder.delete();
-
-        assert_eq!(false, file_exists(&file_to_transfer));
     }
 }
