@@ -1,3 +1,4 @@
+use std::fmt::format;
 use std::fs::rename;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -39,6 +40,12 @@ impl FileObj {
             extension: extension.to_string_lossy().to_string(),
         }
     }
+
+    pub fn to_pathbuf(&self) -> PathBuf {
+        let mut new = self.parent.clone();
+        new.push( format!("{}.{}" , self.file_name, self.extension));
+        return new;
+    }
 }
 
 impl ToString for FileObj {
@@ -55,6 +62,7 @@ impl ToString for FileObj {
         }
     }
 }
+
 
 pub struct TestFile {
     pub files: Vec<String>,

@@ -1,30 +1,47 @@
 mod file;
 mod helpers;
+mod processes;
+mod models;
+
+use helpers::FileObj;
+// use processes::{loop_settings, file_listener};
 use file::{check_file_size, rotate_file, settings};
-use std::{thread, time::Duration};
+use std::{path::PathBuf, thread, time::Duration};
+use futures::{future, StreamExt, future::BoxFuture};
+use tokio::{self, sync::Notify};
+use models::{Settings, FileSetting, Actions};
+use tokio::sync::{Mutex, mpsc::channel};
+use std::sync::Arc;
 
-fn main() {
-    let settings_file = "data/default_settings.json";
-    let file_location = "data/test_file.json";
-    let mut file_size: u64 = 120;
 
-    let mut data = settings(Some(settings_file));
-    println!("total bytes >>> {}", data.bytes());
+use processes::{
+    TaskWrapper, SleepArc, Acitons,
+    file_listen, rotate_file_action
+};
+use inotify::{Inotify};
 
-    'checker: loop {
-        if file_size < data.bytes() {
-            data = settings(Some(settings_file));
-            println!("current size {file_size:?} --- {}", data.bytes());
 
-            file_size = check_file_size(file_location).unwrap();
+#[tokio::main]
+async fn main() {
+    let files: FileSetting = FileSetting {
+        settings_path: FileObj::new("./data/default_settings.json".to_string()),
+        log_path: FileObj::new("./rotate_dir/tmp.txt".to_string()),
+    };
 
-            println!("current size after {file_size:?}");
+    let (sender, receiver) = channel::<Acitons>(3);
+    let container = TaskWrapper{sender};
 
-            thread::sleep(Duration::from_millis(100));
-        } else {
-            rotate_file(String::from(file_location));
-            break 'checker;
-        }
-        // break 'checker;
-    }
+
+    // may not be necessary as settings file is passed in FileSettings
+    let counter: SleepArc = Arc::new(Mutex::new(2));
+    // same here. should be as part of FileSettings
+    let desired_file_size = Arc::new(Mutex::new(200));
+
+    let task = tokio::spawn(file_listen(container, counter, desired_file_size, files));
+    let receiver_task = tokio::spawn(rotate_file_action(receiver));
+    let mut tasks = Vec::new();
+    tasks.push(task);
+    tasks.push(receiver_task);
+
+    future::join_all(tasks).await;
 }
