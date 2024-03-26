@@ -1,6 +1,6 @@
 use crate::helpers::FileObj;
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::{env, fs::File};
 
@@ -36,7 +36,7 @@ pub fn check_file_size(file_location: &str) -> Result<u64, FileError> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FileSize {
     Mb(u64),
@@ -78,6 +78,8 @@ impl FileSize {
 }
 
 pub fn settings(file_location: Option<&str>) -> FileSize {
+    todo!("deprecated - using casting from FileObj to Settings");
+
     let mut file_size: Option<FileSize> = None;
 
     if let Some(file_location) = file_location {

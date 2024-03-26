@@ -1,5 +1,5 @@
 use std::time::Duration;
-use crate::models::{FileSetting};
+use crate::models::{FileSetting, Settings};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use inotify::{Inotify, WatchMask};
@@ -11,19 +11,20 @@ use tokio::macros::support::Pin;
 use std::path::PathBuf;
 use tokio::fs::File;
 
-pub enum Acitons {
+pub enum Actions {
     Rotate,
     RotatedFromSleep
 }
 
 pub struct TaskWrapper {
-    pub sender: Sender<Acitons>,
+    pub sender: Sender<Actions>,
 }
 
 type AsyncTask = Pin<Box<dyn Future<Output = ()> + Send>>;
 pub type SleepArc = Arc<Mutex<u64>>;
 
 async fn get_size(path: PathBuf) -> u64 {
+    // if this is async then I think the race condition is mitigated
     todo!("potential race condition here!!");
 
     let file = File::open(path).await.unwrap();
@@ -40,7 +41,7 @@ fn sleep_and_wait(sleep_value: Arc<Mutex<u64>>) -> AsyncTask {
     });
 }
 
-pub fn rotate_file_action(mut receiver: Receiver<Acitons>) -> AsyncTask {
+pub fn rotate_file_action(mut receiver: Receiver<Actions>) -> AsyncTask {
     return Box::pin(async move{
         loop {
             let event = receiver.try_recv();
@@ -49,22 +50,31 @@ pub fn rotate_file_action(mut receiver: Receiver<Acitons>) -> AsyncTask {
             }
 
             match event {
-                Ok(Acitons::Rotate) => {
+                Ok(Actions::Rotate) => {
                     println!("rotating file now");
                 },
+                Ok(Actions::RotatedFromSleep) => {
+                    println!("slept great. Now rotating!!");
+                }
                 _ => {}
             }
         }
     });
 }
 
-pub fn file_listen(container: TaskWrapper, sleep_couner: SleepArc, file_size: SleepArc, files: FileSetting) -> AsyncTask {
+pub fn file_listen(container: TaskWrapper, files: FileSetting) -> AsyncTask {
     return Box::pin(async move {
         let log_file = files.log_path.to_pathbuf();
         let settings_file = files.settings_path.to_pathbuf();
 
         assert!(log_file.exists());
         assert!(settings_file.exists());
+
+
+        let settings: Settings = files.settings_path.clone().into();
+
+        let sleep_couner: SleepArc = Arc::new(Mutex::new( settings.sleep_counter));
+        let file_size: SleepArc = Arc::new(Mutex::new(settings.file_size.bytes()));
 
         let inote = Inotify::init().expect("failed to init inotify");
 
@@ -99,10 +109,17 @@ pub fn file_listen(container: TaskWrapper, sleep_couner: SleepArc, file_size: Sl
 
                                     // if size >= desired_size {
                                     println!("file size changed and rotated");
-                                    container.sender.send(Acitons::Rotate).await.unwrap();
+                                    container.sender.send(Actions::Rotate).await.unwrap();
                                     break;
                                 } else if inner.wd == settings_handle {
-                                    println!("settings file has changed. need to restart process");
+                                    let new_settings: Settings = files.settings_path.clone().into();
+
+                                    let mut inner_sleep = sleep_couner.lock().await;
+                                    *inner_sleep = new_settings.sleep_counter;
+
+                                    let mut inner_size = file_size.lock().await;
+                                    *inner_size = new_settings.file_size.bytes();
+
                                     break;
                                 } else {
                                     // do nothing
@@ -111,8 +128,8 @@ pub fn file_listen(container: TaskWrapper, sleep_couner: SleepArc, file_size: Sl
                         }
                     }  => {},
                     _ = sleep_and_wait(sleep_couner.clone()) => {
-                        container.sender.send(Acitons::RotatedFromSleep).await.unwrap();
-                        println!("slept and completed");
+                        container.sender.send(Actions::RotatedFromSleep).await.unwrap();
+                        println!("slept and completed for {:?}", sleep_couner);
                     }
                 }
             }
