@@ -25,7 +25,6 @@ impl FileObj {
         }
     }
 
-
     pub fn new(file_location: String) -> Self {
         let filename = String::from(file_location.as_str());
         let file_path = Path::new(&filename).to_owned();
@@ -43,7 +42,7 @@ impl FileObj {
 
     pub fn to_pathbuf(&self) -> PathBuf {
         let mut new = self.parent.clone();
-        new.push( format!("{}.{}" , self.file_name, self.extension));
+        new.push(format!("{}.{}", self.file_name, self.extension));
         return new;
     }
 }
@@ -62,7 +61,6 @@ impl ToString for FileObj {
         }
     }
 }
-
 
 pub struct TestFile {
     pub files: Vec<String>,
@@ -117,10 +115,7 @@ pub fn get_highest_file(mut file_location: FileObj) -> u32 {
 pub fn move_file(from_file: FileObj, to_file: FileObj) -> bool {
     let from_loc: &str = &from_file.to_string();
     let to_loc: &str = &to_file.to_string();
-    let result = rename(
-        Path::new(&from_loc),
-        Path::new(&to_loc),
-    );
+    let result = rename(Path::new(&from_loc), Path::new(&to_loc));
     return result.is_ok();
 }
 
@@ -176,7 +171,7 @@ mod tests {
 
         move_file(
             FileObj::new(file_from.to_string()),
-            FileObj::new(file_to_transfer.to_string())
+            FileObj::new(file_to_transfer.to_string()),
         );
 
         // check that from_file is deleted and new file "file_to_transfer" exists
@@ -193,9 +188,6 @@ mod tests {
     fn test_file_path_without_parent() {
         let file_operator = FileObj::new("myfile.txt".to_string());
 
-        assert_eq!(
-            file_operator.to_string(),
-            String::from("myfile.txt")
-        )
+        assert_eq!(file_operator.to_string(), String::from("myfile.txt"))
     }
 }

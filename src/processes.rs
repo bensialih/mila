@@ -1,19 +1,19 @@
-use std::time::Duration;
 use crate::models::{FileSetting, Settings};
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use inotify::{Inotify, WatchMask};
 use futures_util::StreamExt;
-use tokio::sync::mpsc::{Sender, Receiver};
+use inotify::{Inotify, WatchMask};
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::Mutex;
 
 use futures::Future;
-use tokio::macros::support::Pin;
 use std::path::PathBuf;
 use tokio::fs::File;
+use tokio::macros::support::Pin;
 
 pub enum Actions {
     Rotate,
-    RotatedFromSleep
+    RotatedFromSleep,
 }
 
 pub struct TaskWrapper {
@@ -24,9 +24,6 @@ type AsyncTask = Pin<Box<dyn Future<Output = ()> + Send>>;
 pub type SleepArc = Arc<Mutex<u64>>;
 
 async fn get_size(path: PathBuf) -> u64 {
-    // if this is async then I think the race condition is mitigated
-    todo!("potential race condition here!!");
-
     let file = File::open(path).await.unwrap();
     let meta = file.metadata().await.unwrap().len();
     return meta;
@@ -42,7 +39,7 @@ fn sleep_and_wait(sleep_value: Arc<Mutex<u64>>) -> AsyncTask {
 }
 
 pub fn rotate_file_action(mut receiver: Receiver<Actions>) -> AsyncTask {
-    return Box::pin(async move{
+    return Box::pin(async move {
         loop {
             let event = receiver.try_recv();
             if event.is_err() {
@@ -52,7 +49,7 @@ pub fn rotate_file_action(mut receiver: Receiver<Actions>) -> AsyncTask {
             match event {
                 Ok(Actions::Rotate) => {
                     println!("rotating file now");
-                },
+                }
                 Ok(Actions::RotatedFromSleep) => {
                     println!("slept great. Now rotating!!");
                 }
@@ -70,10 +67,9 @@ pub fn file_listen(container: TaskWrapper, files: FileSetting) -> AsyncTask {
         assert!(log_file.exists());
         assert!(settings_file.exists());
 
-
         let settings: Settings = files.settings_path.clone().into();
 
-        let sleep_couner: SleepArc = Arc::new(Mutex::new( settings.sleep_counter));
+        let sleep_couner: SleepArc = Arc::new(Mutex::new(settings.sleep_counter));
         let file_size: SleepArc = Arc::new(Mutex::new(settings.file_size.bytes()));
 
         let inote = Inotify::init().expect("failed to init inotify");
@@ -87,7 +83,7 @@ pub fn file_listen(container: TaskWrapper, files: FileSetting) -> AsyncTask {
             .add(settings_file, WatchMask::MODIFY)
             .expect("failed to find log file.");
 
-        let mut buffer = [0;1024];
+        let mut buffer = [0; 1024];
         let mut stream = inote.into_event_stream(buffer).unwrap();
 
         'outer: loop {

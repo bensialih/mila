@@ -122,10 +122,7 @@ mod tests {
         let file_operator = FileObj::new("/tmp/tmp.txt".to_string());
         let list = rotate_files(file_operator.clone(), 5);
         assert_eq!(list.len(), 5);
-        assert_eq!(
-            list[0].to_string(),
-            String::from("/tmp/tmp.5.txt")
-        );
+        assert_eq!(list[0].to_string(), String::from("/tmp/tmp.5.txt"));
     }
 
     #[test]
@@ -141,9 +138,6 @@ mod tests {
             file_obj.incremented(4),
             "./data/test_file.4.json".to_string()
         );
-        assert_eq!(
-            file_obj.to_string(),
-            "./data/test_file.json".to_string()
-        );
+        assert_eq!(file_obj.to_string(), "./data/test_file.json".to_string());
     }
 }
